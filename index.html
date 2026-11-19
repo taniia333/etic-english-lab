@@ -304,7 +304,7 @@ function fallbackCopy(t){const a=document.createElement('textarea');a.value=t;a.
 function coachPromptLegacy(n){const l=course(n),d=dayData(n);return `你是我的国才英语（ETIC）考试英语教练。现在进行第${n}天：${l.title}。请只围绕这套任务开展训练。\\n目标：${l.goal}。\\n具体教练规则：1. 英语为主，必要时用简短中文；2. 每次给我一个任务，等我说“finished/我说完了”才点评；3. 每轮重点纠正1—3个问题，给自然修改版本，并要求我重答；4. 听力与口语请检查信息覆盖和表达，不要仅凭转写文字声称评测发音；如有录音请实际听音；5. 写作从任务完成、结构、语言3方面给分；6. 不要把内部训练分当作国才官方成绩。\\n\\n【听力原文（供教练核对，不要第一时间向学生展示）】\\n${l.listening}\\n听力问题：${l.lq.q}\\n【阅读】\\n${l.reading}\\n阅读问题：${l.rq.q}\\n【口语任务】\\n${l.speak}\\n【写作任务】\\n${l.write}\\n【学生口语转写】\\n${d.speakingText||'（尚未提供）'}\\n【学生写作草稿】\\n${d.writing||'（尚未提供）'}\\n【我的复盘】\\n${d.notes||'（尚未提供）'}\\n\\n完成今天训练后，请把关键评语和4项技能训练分（0-100，没证据时使用null）填入以下可解析JSON，严格放在标签内部，不要在JSON中加Markdown：\\n<ETIC_REPORT>\\n{"day":${n},"scores":{"L":null,"R":null,"S":null,"W":null},"summary":"今日总体表现","errors":["最关键错误1","最关键错误2"],"nextPlan":"明日针对性训练建议"}\\n</ETIC_REPORT>\\n\\n请先提出本日第一个训练问题，不要一次性公布答案。`.replaceAll('\\n','\n')}
 function coachPrompt(n){if(studioData(n))return studioCoachPrompt(n);return coachPromptLegacy(n)+
 '\n\n【V2.1 成绩自动同步】本次训练如产生真实可评分的 L/R/S/W 成绩，必须使用已授权 GitHub 连接器读取 taniia333/etic-english-lab 中的 data/public-progress.json，再追加最小公开评分记录，核对写入结果。具体写入与隐私规则以 ETIC_Coach_Skill_V2.md 的 V2.1 版为准。不得上传原稿、录音、错误细节、教练评语或个人识别信息。没有真实训练证据不得写入任何分数；GitHub 工具失败时明确告知未同步。';}
-function reportText(n){const d=dayData(n),l=course(n);return `ETIC English Lab | Day ${n} ${l.title}\n状态：${done(n)?'已完成':'进行中'}\n完成清单：${d.checks.filter(Boolean).length}/5\n学习时间：${d.minutes||0}分钟\n听力题：${d.answers?.L?.checked?(d.answers.L.selected===l.lq.answer?'正确':'错误'):'未答'}；阅读题：${d.answers?.R?.checked?(d.answers.R.selected===l.rq.answer?'正确':'错误'):'未答'}\n训练分（非官方）：听力 ${d.scores?.L??'-'} / 阅读 ${d.scores?.R??'-'} / 口语 ${d.scores?.S??'-'} / 写作 ${d.scores?.W??'-'}\n口语文字：${d.speakingText||'（未填）'}\n写作文字：${d.writing||'（未填）'}\n复盘：${d.notes||'（未填）'}\nGPT反馈：${d.feedback||'（未填）'}`}
+function reportText(n){const d=dayData(n),l=course(n);const studio=studioData(n);const evidence=studio?Object.entries(d.studioAnswers||{}).map(([key,v])=>key+' 首答'+String.fromCharCode(65+v.firstChoice)+' 当前'+String.fromCharCode(65+v.latestChoice)+' 共'+v.attempts+'次').join('；'):'无';return `ETIC English Lab | Day ${n} ${l.title}\n状态：${done(n)?'已完成':'进行中'}\n完成清单：${d.checks.filter(Boolean).length}/5\n学习时间：${d.minutes||0}分钟\n听力题：${d.answers?.L?.checked?(d.answers.L.selected===l.lq.answer?'正确':'错误'):'未答'}；阅读题：${d.answers?.R?.checked?(d.answers.R.selected===l.rq.answer?'正确':'错误'):'未答'}\n训练分（非官方）：听力 ${d.scores?.L??'-'} / 阅读 ${d.scores?.R??'-'} / 口语 ${d.scores?.S??'-'} / 写作 ${d.scores?.W??'-'}\n口语文字：${d.speakingText||'（未填）'}\n写作文字：${d.writing||'（未填）'}\n复盘：${d.notes||'（未填）'}\nGPT反馈：${d.feedback||'（未填）'}\nV2.2扩展题原始作答：${studio?evidence:'不适用'}\n写作第二稿：${d.writingRevision||'（未填）'}`}
 function allReport(){return 'ETIC English Lab 阶段报告（内部训练记录，不是官方考试成绩）\n\n'+BASE_LESSONS.map((l,i)=>reportText(i+1)).join('\n\n------\n\n')}
 function download(name,blob){const a=document.createElement('a'),url=URL.createObjectURL(blob);a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),2000)}
 function jsonDownload(name,data){download(name,new Blob([JSON.stringify(data,null,2)],{type:'application/json;charset=utf-8'}))}
@@ -407,6 +407,53 @@ function saveTeacher(form){const fd=new FormData(form);const out={};for(const ke
 function overallProgress(){return {kind:'ETIC_STUDENT_PROGRESS_V1',...state,exportedAt:new Date().toISOString(),audioIncluded:false}}
 function materialExport(){return {kind:'ETIC_MATERIALS_V1',exportedAt:new Date().toISOString(),version:1,lessons:Object.fromEntries(BASE_LESSONS.map((_,i)=>[i+1,Object.fromEntries(['title','goal','focus','listening','reading','speak','write','tips','vocab','phrases','lq','rq'].map(k=>[k,course(i+1)[k]]))]))}}
 function safeChatUrl(){const u=state.profile.chatUrl||'https://chatgpt.com/';try{const x=new URL(u);if(x.protocol==='https:'&&(/(^|\.)chatgpt\.com$/.test(x.hostname)||/(^|\.)chat\.openai\.com$/.test(x.hostname)))return x.href;}catch(_){}return 'https://chatgpt.com/'}
+// ETIC V2.2: expanded-task answers and dedicated ChatGPT speaking handoff.
+document.addEventListener('click',e=>{
+  const submit=e.target.closest('[data-studio-answer]');
+  if(submit){
+    const day=state.day,studio=studioData(day);if(!studio)return;
+    const key=String(submit.dataset.studioAnswer||'');
+    const track=[...studio.listening,...studio.reading].find(t=>key.startsWith(t.id+'-'));if(!track)return;
+    const qi=Number(key.slice(track.id.length+1));if(!Number.isInteger(qi)||qi<0||qi>=track.questions.length)return;
+    const question=track.questions[qi];
+    const selected=document.querySelector('input[name="studio-radio-'+key+'"]:checked');
+    if(!selected){toast('请选择一个答案再提交');return}
+    const choice=Number(selected.value);
+    if(!Number.isInteger(choice)||choice<0||choice>=question.options.length)return;
+    const d=dayData(day);d.studioAnswers=d.studioAnswers||{};
+    const old=d.studioAnswers[key];
+    const firstChoice=old&&Number.isInteger(old.firstChoice)?old.firstChoice:choice;
+    const firstCorrect=old&&typeof old.firstCorrect==='boolean'?old.firstCorrect:firstChoice===question.answer;
+    d.studioAnswers[key]={firstChoice,firstCorrect,latestChoice:choice,attempts:Math.min(999,(Number(old?.attempts)||0)+1)};
+    save();
+    const out=document.getElementById('studio-result-'+key);
+    if(out){
+      out.className='s-result '+(choice===question.answer?'correct':'wrong');
+      out.textContent='首答：'+(firstCorrect?'正确':'待改进')+' · 本次：'+(choice===question.answer?'正确':'需要复习')+' · '+question.why+'（练习题，不等于正式技能评分）';
+    }
+    submit.textContent='再次练习';
+    toast('本题答案与复练次数已保存');
+    return;
+  }
+  const play=e.target.closest('[data-studio-play]');
+  if(play){
+    const studio=studioData(state.day);const t=studio?.listening?.find(x=>x.id===play.dataset.studioPlay);
+    if(!t)return;
+    if(typeof t.audio==='string'&&t.audio){
+      const audio=play.closest('.s-track')?.querySelector('audio');
+      if(audio){stopSpeech();audio.play().catch(()=>toast('音频播放失败，请检查网络或文件路径。'));return;}
+    }
+    speakText(t.text,play);
+    return;
+  }
+  const copy=e.target.closest('[data-studio-copy-speaking]');
+  if(copy){
+    const idx=Number(copy.dataset.studioCopySpeaking);const x=studioData(state.day);
+    if(!x||!Number.isInteger(idx)||idx<0||idx>=x.speaking.length)return;
+    copyText(studioCoachPrompt(state.day,idx));
+    return;
+  }
+});
 document.addEventListener('click',async e=>{const nav=e.target.closest('[data-nav]');if(nav){navigation(nav.dataset.nav);return}const bd=e.target.closest('[data-day]');if(bd){setDay(Number(bd.dataset.day));return}const bc=e.target.closest('[data-check]');if(bc){let n=Number(bc.dataset.check);dayData(state.day).checks[n]=!dayData(state.day).checks[n];dayData(state.day).date=new Date().toISOString().slice(0,10);save();render();return}const answer=e.target.closest('[data-answer]');if(answer){const type=answer.dataset.answer,sel=document.querySelector(`input[name="${type}question"]:checked`);if(!sel){toast('先选择答案');return}const d=dayData(state.day);d.answers=d.answers||{};d.answers[type]={selected:Number(sel.value),checked:true};const q=course(state.day)[type==='L'?'lq':'rq'];save();render();toast('答案已记录。客观题正确率与四技能能力评分分别记录。');return}const timer=e.target.closest('[data-timer]');if(timer){stopTimer(true);timerSeconds=Number(timer.dataset.timer)||60;showTimer();return}const say=e.target.closest('[data-say]');if(say){speakText(say.dataset.say,say);return}const b=e.target.closest('[data-action]');if(!b)return;switch(b.dataset.action){case'go-lesson':navigation('lesson');break;case'prev-day':setDay(state.day-1);break;case'next-day':setDay(state.day+1);break;case'copy-coach':copyText(coachPrompt(state.day));break;case'copy-studio-coach':copyText(studioCoachPrompt(state.day));break;case'show-legacy':navigation('legacy');break;case'open-chat':window.open(safeChatUrl(),'_blank','noopener,noreferrer');break;case'copy-report':copyText(reportText(state.day));break;case'copy-overall':copyText(allReport());break;case'play-listen':speakText(course(state.day).listening,b);break;case'return-studio':navigation('lesson');break;case'speak-phrases':speakText(course(state.day).phrases.join('. '),b);break;case'stop-listen':stopSpeech();break;case'timer-toggle':timerToggle();break;case'record-start':await startRecord();break;case'record-stop':stopRecord();break;case'download-record':if(currentBlob){const ext=currentBlob.type.includes('mp4')?'m4a':'webm';download(`ETIC_Day${String(state.day).padStart(2,'0')}_speaking.${ext}`,currentBlob)}break;case'import-feedback':handleFeedback();break;case'save-minutes':dayData(state.day).minutes=Math.max(0,Math.min(1440,parseInt($('#minutes').value)||0));save();toast('本日学习时间已保存');break;case'export-progress':jsonDownload('ETIC_20day_learning_progress.json',overallProgress());break;case'export-material':jsonDownload('ETIC_20day_curriculum_materials.json',materialExport());break;case'restore-material':if(confirm('恢复第'+teacherDay+'天的默认教材？')){delete materialOverrides[teacherDay];saveMaterials();render();toast('已恢复本日默认教材')}break;case'save-settings':{const url=$('#chatUrl').value.trim();if(url&&!/^https:\/\//i.test(url)){toast('ChatGPT网址请使用https://开头');return}state.profile={name:$('#profileName').value.trim(),startDate:$('#startDate').value,target:Math.max(30,Math.min(600,parseInt($('#targetTime').value)||240)),chatUrl:url||'https://chatgpt.com/'};save();toast('设置已保存');break}case'reset-progress':if(confirm('确定清空当前全部学习进度？此操作不会清除本地音频库或修改教材。')){state.days={};state.day=1;save();render();toast('学习进度已清空')}break;}});
 document.addEventListener('input',e=>{const t=e.target;if(t.dataset.field){dayData(state.day)[t.dataset.field]=t.value;save();if(t.dataset.field==='writing'){const w=$('#wordCounter');if(w)w.textContent=`（${words(t.value)} words）`}}if(t.dataset.score){dayData(state.day).scores[t.dataset.score]=t.value===''?null:normScore(t.value);save()}});
 document.addEventListener('change',e=>{if(e.target.id==='teacherDay'){teacherDay=Number(e.target.value);render()}if(e.target.id==='progressFile'||e.target.id==='materialFile'){handleFile(e.target)}});
