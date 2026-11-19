@@ -1,6 +1,6 @@
-# ETIC English Lab V2.1
+# ETIC English Lab V2.2
 
-Independent 20-day ETIC English training website. This repository is not connected to the Tang Lab baking projects.
+Independent 20-day ETIC English training website. V2.2 introduces **two deep-learning prototypes** while preserving the other 18 days as V2.1 basics. This repository is not connected to the Tang Lab baking projects.
 
 **Live site:** https://taniia333.github.io/etic-english-lab/
 
@@ -49,3 +49,18 @@ The site reads from GitHub; it does not itself authenticate with GitHub or write
 - `index.html`: 20-day curriculum, exercises, recording, dashboard, GitHub read-only sync
 - `data/public-progress.json`: anonymized public score/progress summary, initially empty
 - `ETIC_Coach_Skill_V2.md`: V2.1 instructions for teaching, scoring and GitHub writeback
+
+## V2.2 depth course pilot (Day 01 and Day 05 only)
+
+New independently maintained file: `assets/studio-v22.js`.
+
+- Day 01 is **real instruction with an initial 30-minute embedded diagnostic**, not an all-day entrance exam. 20 expression items, 8 sentence models, 3 listening passages/12 questions, 2 reading passages/8 questions, 3 oral tasks and 100–150-word email with second draft.
+- Day 05 is a listening/speaking intensive: 18 expression items, 8 sentence models, 3 listening passages/12 questions, 2 reading passages/6 questions, 3 oral tasks with revision/transfer, 120–160-word follow-up email and second draft.
+- Both show detailed 240-minute study plans. Time blocks describe goals, not actual tracked elapsed time.
+- Web answers preserve the first submitted choice plus latest choice and number of attempts in the existing per-day local learning archive; answer results do **not** automatically become full L/R/S/W skill scores.
+- ChatGPT oral link is explicit: copy task, open the configured ChatGPT conversation, paste it, and start Voice manually. There is no site-side ChatGPT voice auto-start or chat history API.
+- The old Day 01 / Day 05 base lessons, HTML audio recorder and data remain available under the legacy link, and other 18 days were not edited.
+- Listening audio: the site **supports future prerecorded MP3** (`audio` field per passage) but these files have **not yet been generated/attached**. Currently, device system English speech with optional voice and speed is provided for practice. Do not describe it as natural recorded audio.
+- GitHub Pages score data schema remains `2.1`; do not migrate existing public scores just because the curriculum is at V2.2.
+
+V2.2 acceptance steps: open Day 01 on iPhone; answer a new listening and a new reading question; reload and confirm the first/most recent answers are retained; save a writing draft; copy the specific GPT speaking task and open the expected chat; come back and confirm content is preserved; complete true coaching before writing a non-demo GitHub score.
