@@ -1,59 +1,51 @@
-# ETIC English Lab V2.0
+# ETIC English Lab V2.1
 
-A standalone 20-day ETIC English training platform. This repository is separate from the user's baking/R&D projects.
+Independent 20-day ETIC English training website. This repository is not connected to the Tang Lab baking projects.
 
-## Deploy with GitHub Pages
+**Live site:** https://taniia333.github.io/etic-english-lab/
 
-1. Open **Settings → Pages**.
-2. Under **Build and deployment**, choose **Deploy from a branch**.
-3. Select branch **main** and folder **/(root)**.
-4. Save and wait for GitHub Pages to publish.
-5. The project site URL should be:
-   https://taniia333.github.io/etic-english-lab/
+## GitHub Pages
 
-## Google Sheets progress reader (OAuth)
+Settings → Pages → Deploy from a branch → `main` → `/(root)`.
 
-The page reads the private `Scores` tab from the learner's Google Sheet. It does not write to Sheets from the browser. The ChatGPT coach uses the connected Google Sheets integration to append verified training records; the page then reads those records using the learner's own Google authorization.
+## Privacy-minimal GitHub score sync (no Google Cloud required)
 
-Spreadsheet:
-https://docs.google.com/spreadsheets/d/1MWyLfoxUR51YXT9RjfZPvFFpQfSBr9_i4SGHFngtxNg/edit
+The website reads the **public**, versioned file `data/public-progress.json` using `fetch()` from the same GitHub Pages origin. It fetches at page load, when the browser tab becomes active, on manual refresh, and every three minutes while the tab is visible.
 
-### One-time Google Cloud setup
+Only the following are allowed in the public data:
 
-1. In Google Cloud Console, create/select a project.
-2. Enable **Google Sheets API**.
-3. Configure the OAuth consent screen. If the app is in Testing mode, add the learner's Google account as a test user.
-4. Create an OAuth Client ID of type **Web application**.
-5. Under **Authorized JavaScript origins**, add:
-   `https://taniia333.github.io`
-   (Do not add the repository path; origins contain scheme + host only.)
-6. No redirect URI is needed for the Google Identity Services token-client flow used by this page.
-7. Copy the OAuth Client ID (it is a public client identifier, not a client secret).
-8. Open the deployed page → **AI Coach / Cloud Sync** section, paste the OAuth Client ID, save it, then choose **Authorize Google read access**.
-9. Sign in with the same Google account that has access to the private spreadsheet.
+- `schema_version`: `2.1`
+- `learner_id`: fixed non-secret label `learner-001`
+- `updated_at_utc`: timestamp, not personal content
+- `completed_days`: array of verified day numbers (1–20)
+- `records`: entries with `record_id`, `day`, `skill` (`L/R/S/W`), `score` (0–100), `attempt`.
 
-The page requests the read-only scope:
-`https://www.googleapis.com/auth/spreadsheets.readonly`
+No names, emails, private Google Sheets URLs, original recordings, answers, writing drafts, mistake lists, or personalized teacher feedback may be stored in this repository. Public Git history is **not** a private database, and published scores may be linked to the repository owner.
 
-Never place a Google client secret, API key, access token, or private learner data in this public repository. The OAuth Client ID may be stored in the browser's local storage; do not add a client secret to a static site.
+This schema is deliberately separate from the private ETIC_SCORE_V2 training-detail schema, enabling future migration to authenticated learner accounts.
 
-## Data flow
+## Coach workflow
 
-1. Learner completes a task in ChatGPT using `ETIC_Coach_Skill_V2.md`.
-2. Coach grades only evidence actually received, asks for a retry where appropriate, and creates a structured `ETIC_SCORE_V2` record.
-3. With the learner's authorization, ChatGPT writes the REAL record to the private Google Sheet's `Scores` tab and reads it back to verify.
-4. The learner opens **AI Coach / Cloud Sync** in the website and refreshes the private score records.
-5. If connector writeback is unavailable, the coach provides JSON for manual import. The page labels this as local/manual data, not cloud-synced data.
+1. Learner opens the site, selects a day, and copies the day's AI Coach instruction.
+2. ChatGPT follows `ETIC_Coach_Skill_V2.md` (the V2.1 coaching specification). It must wait for an actual answer before assigning an internal training score.
+3. If connected to the learner's **private** Google Sheets, ChatGPT may write verified detailed evaluations there. This is optional and does not require browser OAuth.
+4. After an actual scored task, ChatGPT reads the current `data/public-progress.json` via its GitHub connection, adds only an approved public score summary, uses the latest blob SHA to update the file, and reads back to verify the write.
+5. If GitHub writeback succeeds, the public site refreshes automatically. GitHub Pages cache/deployment updates may take some time.
+6. If GitHub writeback is unavailable, the coach reports failure rather than implying background sync. The site's manual import remains available for private backup records.
 
-## Important
+The site reads from GitHub; it does not itself authenticate with GitHub or write records back.
 
-- Rows marked `DEMO` are test fixtures and must not count as real learner results.
-- Internal 0–100 scores are training feedback, not official ETIC scores and not a prediction of passing.
-- Speech fluency/pronunciation can only be assessed from actual audio. A transcript alone is insufficient evidence for phoneme, stress, or rhythm feedback.
-- Browser recordings and progress are stored locally unless explicitly exported; Google Sheets contains only the structured coach records.
-- This is a single-learner setup. Multi-learner accounts, teacher dashboards, and billing are out of scope.
+## Limits and later migration
+
+- This is a **single-learner** training prototype.
+- GitHub score summaries and completed days can automatically sync across devices.
+- Private lesson notes, full details, recordings, local tasks and checkboxes are **not automatically synchronized** across devices; export backups separately.
+- Official ETIC scores and pass/fail decisions are separate from internal 0–100 training scores.
+- The current GPT must actually execute the GitHub write; Skills and chats do not continuously sync in the background.
+- For future multi-learner deployment, migrate to private per-learner records with authentication, role-based access, teacher reporting, consent and proper retention/deletion workflows. Never put multi-learner data in the public JSON.
 
 ## Files
 
-- `index.html` — standalone training website.
-- `ETIC_Coach_Skill_V2.md` — reusable coach workflow and scoring protocol.
+- `index.html`: 20-day curriculum, exercises, recording, dashboard, GitHub read-only sync
+- `data/public-progress.json`: anonymized public score/progress summary, initially empty
+- `ETIC_Coach_Skill_V2.md`: V2.1 instructions for teaching, scoring and GitHub writeback
